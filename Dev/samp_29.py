@@ -60,8 +60,9 @@ def face_detection(image,name):
         print("face direction not towards camera")
     elif len(dlib_rect)==1 and len(haar_detector)>=1:
         shape=predictor(image,dlib_rect[0])
+        # 37 40
         # a=shape.part(18).x
-        # b=shape.part(25).x 
+        # b=shape.part(32).x 
         # c=shape.part(21).y 
         # d=shape.part(28).y
         
@@ -71,9 +72,8 @@ def face_detection(image,name):
         y2=shape.part(28).y
         
         left_eye=image[y1:y2,x1:x2]
-        
         gray = cv2.cvtColor(left_eye, cv2.COLOR_BGR2GRAY)
-               
+        cv2.imwrite('C:/Users/Admin/Downloads/backup1/Eye_movement_tracking/eye_images/'+'only_eyes_'+str(name.split('.')[0])+'.png',left_eye)
         _, eye_thresh = cv2.threshold(gray, 50, 255, cv2.THRESH_BINARY_INV)
         cv2.imwrite('C:/Users/Admin/Downloads/backup1/Eye_movement_tracking/thresh/'+'eyethresh_'+str(name.split('.')[0])+'.png',eye_thresh)
         contours, _ = cv2.findContours(eye_thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
