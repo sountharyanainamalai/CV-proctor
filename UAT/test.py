@@ -47,12 +47,26 @@ def find_eyeball_position(cen, s, d):
             pos=0
     return pos
 
-
+def upside(cen,dw,tp):
+    if cen<100 and dw>cen and dw>100 and tp<cen:
+        pos=3
+    else:
+        pos=0
+    return pos
     
 def contouring(thresh, mid, img, end_points, gray,right=False):
-    cnts, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+    
     try:
+        cnts, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
         cnt = max(cnts, key = cv2.contourArea)
+        
+        M = cv2.moments(cnt)
+        cx = int(M['m10']/M['m00'])
+        cy = int(M['m01']/M['m00'])
+        if right:
+            cx += mid
+        cv2.circle(img, (cx, cy), 4, (0, 0, 255), 2)
+        
         x1, y1, w1, h1 = cv2.boundingRect(cnt)
         eye_crop=gray[y1:y1+h1,x1:x1+w1]
         h,w=eye_crop.shape
@@ -62,24 +76,38 @@ def contouring(thresh, mid, img, end_points, gray,right=False):
         mid_val=eye_crop[h//2,w//2]
         left_val=first_part[first_part.shape[0]//2,first_part.shape[1]//2]
         right_val=sec_part[sec_part.shape[0]//2,sec_part.shape[1]//2]
-
-        M = cv2.moments(cnt)
-        cx = int(M['m10']/M['m00'])
-        cy = int(M['m01']/M['m00'])
-        if right:
-            cx += mid
-        cv2.circle(img, (cx, cy), 4, (0, 0, 255), 2)
         pos = find_eyeball_position(mid_val, left_val, right_val)
+        
         if pos==0:
+            thresh=eye_up_side(gray)
+            cnts, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+            cnt = max(cnts, key = cv2.contourArea)
+
+            M = cv2.moments(cnt)
+            cx = int(M['m10']/M['m00'])
+            cy = int(M['m01']/M['m00'])
+            if right:
+                cx += mid
+            cv2.circle(img, (cx, cy), 4, (0, 0, 255), 2)
             if (cy - end_points[1])/(end_points[3] - cy)< 0.33:
                 pos=3
+
         return pos
     except:
         pass
     
-def process_thresh(thresh):
+def process_thresh(gray):
+    _, thresh = cv2.threshold(gray, 75, 255, cv2.THRESH_BINARY)    
     thresh = cv2.erode(thresh, None, iterations=3)
     thresh = cv2.dilate(thresh, None, iterations=3) 
+    thresh = cv2.medianBlur(thresh, 3) 
+    thresh = cv2.bitwise_not(thresh)
+    return thresh
+
+def eye_up_side(thresh):
+    _, thresh = cv2.threshold(gray, 75, 255, cv2.THRESH_BINARY)    
+    thresh = cv2.erode(thresh, None, iterations=2) 
+    thresh = cv2.dilate(thresh, None, iterations=4) 
     thresh = cv2.medianBlur(thresh, 3) 
     thresh = cv2.bitwise_not(thresh)
     return thresh
@@ -136,13 +164,7 @@ while(True):
             eyes[mask] = [255, 255, 255]
             mid = int((shape[42][0] + shape[39][0]) // 2)
             gray = cv2.cvtColor(eyes, cv2.COLOR_BGR2GRAY)
-            # threshold = cv2.getTrackbarPos('threshold', 'image')
-            _, thresh = cv2.threshold(gray, 75, 255, cv2.THRESH_BINARY)
-            # cv2.imwrite('C:/Users/Admin/Downloads/backup1/Eye_movement_tracking/thresh/'+'eyes'+str(i.split('.')[0])+'.png',thresh)
-    
-            thresh = process_thresh(thresh)
-            # cv2.imwrite('C:/Users/Admin/Downloads/backup1/Eye_movement_tracking/thresh/'+'eyes'+str(i.split('.')[0])+'.png',thresh)
-    
+            thresh = process_thresh(gray)    
             eyeball_pos_left = contouring(thresh[:, 0:mid], mid, img, end_points_left,gray[:, 0:mid])
             eyeball_pos_right = contouring(thresh[:, mid:], mid, img, end_points_right,gray[:, mid:], True)
             print_eye_pos(img, eyeball_pos_left, eyeball_pos_right)
